@@ -1,0 +1,440 @@
+---
+  title: "penguin_analysis"
+author: "Catherine Stephenson"
+date: "2024-10-16"
+output: html_document
+---
+  ```{r}r
+library(tidyverse)
+library(palmerpenguins)
+library(here)
+library(janitor)
+```
+
+do not install packages everytime as the package may have changed
+
+use library for loading in packages the same
+
+use here() instead of setwd - privacy issue and more secure
+```{r}
+here()
+```
+load libraries
+
+```{r}
+write.csv(penguins_raw, here("PenguinData","penguins_raw.csv"))
+```
+
+never edit a file in excel makes it unreproducible
+
+never override data by saving it as the same thing (if accidentally done then reload the read only saved copy)
+
+cleaning the data table by removing columns in the penguin raw data:
+  
+  
+  
+  ```{r}
+colnames(penguins_raw)
+penguins_clean <- select(penguins_raw, -Comments)
+colnames(penguins_clean)
+```
+same for two columns at once (how to not overwrite):
+  ```{r}
+penguins_cleaner <- penguins_raw %>%
+  clean_names
+select(-Comments) %>% #using piping to remove columns %>% means and then
+  select(-starts_with("Delta"))
+
+
+
+```
+```{r}
+#we can make a new function called cleaning_penguin_columns
+
+#head(penguins_clean)
+
+library(tidyverse)
+library(palmerpenguins)
+library(here)
+library(janitor)
+
+here()
+
+write.csv(penguins_raw, here("data","penguins_raw.csv"))
+
+
+cleaning_penguin_columns <-function(raw_data){
+  raw_data %>%
+    clean_names()%>%
+    select(-comments)%>%
+    select(-starts_with("delta"))
+  
+}
+
+file.create(here("functions", "cleaning.R"))
+```
+
+to load the function file:
+  
+  
+
+```{r}
+
+
+source(here("functions", "cleaning.R"))
+
+penguins_raw <- read.csv(here("data","penguins_raw.csv"))
+
+cleaning_penguin_columns <-function(raw_data){
+  print("Cleaned names, removed comments, removed empty rows and cols, removed delta")
+  raw_data %<%
+    clean_names() %>%
+    select
+  shorten_species() %>%
+    remove_empty_columns_rows()
+}
+```
+
+
+  
+  we need to install renv
+  
+  ```{r}
+  install.packages("renv")
+  
+  
+  ```
+  
+  ```{r}
+  renv::diagnostics
+  
+  ```
+  ```{r}
+  
+  install.packages("table1")
+  renv::snapshot
+  ```
+  
+Now to part 2:reproducible figures
+
+```{r}
+library(tidyverse)
+library(here)
+library(janitor)
+library(ggplot2)
+
+source(here("functions", "cleaning.R"))
+
+```
+
+creating exploratory figures
+
+- shows raw data ad is a good first step before modelling
+
+```{r}
+penguins_raw <- read_csv(here("data", "penguins_raw.csv"))
+
+penguins_clean <- penguins_raw %>%
+  clean_column_names() %>%
+  remove_columns(c("comments", "delta")) %>%
+  shorten_species() %>%
+  remove_empty_columns_rows()
+
+names(penguins_clean)
+```
+```{r}
+flipper_boxplot <- ggplot(
+  data = penguins_clean, 
+  aes(x = species, 
+      y = flipper_length_mm)) +
+  geom_boxplot()
+
+#to remove NAs:
+
+penguins_flippers <- penguins_clean %>%
+  select(species, flipper_length_mm) %>%
+  drop_na()
+
+flipper_boxplot
+```
+
+to make this look better:
+
+```{r}
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(aes(color = species), 
+                show.legend = FALSE) +
+    geom_jitter(aes(color = species), 
+                show.legend = FALSE)
+                          
+
+flipper_boxplot
+```
+  
+  however randomness is not reproducible (doesnt matter here, however)
+  
+  use a random_seed to create same randomness:
+  
+```{r}
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(
+        x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(
+        aes(color = species), 
+        width = 0.3, 
+        show.legend = FALSE) +
+    geom_jitter(
+        aes(color = species),
+        show.legend = FALSE, 
+        position = position_jitter(
+            width = 0.2, 
+            seed = 0))
+
+flipper_boxplot
+     
+```
+  
+  to alter the transparency of elements - change the alpha value - 1= opaque, 0= transparent
+  
+```{r}
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(
+        x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(
+        aes(color = species), 
+        width = 0.3, 
+        show.legend = FALSE) +
+    geom_jitter(
+        aes(color = species),
+        alpha = 0.3,
+        show.legend = FALSE, 
+        position = position_jitter(width = 0.2, seed = 0))
+
+flipper_boxplot
+     
+```
+  fixing the labels:
+  
+```{r}
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(aes(color = species), 
+                width = 0.3, 
+                show.legend = FALSE) +
+    geom_jitter(aes(color = species), 
+                alpha = 0.3,
+                show.legend = FALSE,
+                position = position_jitter(
+                    width = 0.2, 
+                    seed = 0)) +
+    labs(x = "Species",
+         y = "Flipper Length (mm)")
+
+flipper_boxplot
+     
+```
+  changing the colour scheme:
+  
+```{r}
+species_colours <- c("Adelie" = "darkorange", 
+                    "Chinstrap" = "purple", 
+                    "Gentoo" = "cyan4")
+
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(
+        x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(
+        aes(color = species), 
+            width = 0.3, 
+            show.legend = FALSE) +
+    geom_jitter(
+        aes(color = species), 
+        alpha = 0.3,
+        show.legend = FALSE,
+        position = position_jitter(
+            width = 0.2, 
+            seed = 0)) +
+    scale_color_manual(values = species_colours) +
+    labs(x = "Species",
+                               y = "Flipper Length (mm)")
+
+flipper_boxplot
+```
+ we can change the theme to remove the background:
+ 
+```{r}
+species_colours <- c("Adelie" = "darkorange", 
+                    "Chinstrap" = "purple", 
+                    "Gentoo" = "cyan4")
+
+flipper_boxplot <- ggplot(
+    data = penguins_flippers, 
+    aes(
+        x = species, 
+        y = flipper_length_mm)) +
+    geom_boxplot(
+        aes(color = species), 
+        width = 0.3, 
+        show.legend = FALSE) +
+    geom_jitter(
+        aes(color = species), 
+        width = 0.3, 
+        alpha = 0.3,
+        show.legend = FALSE) +
+    scale_color_manual(
+        values = species_colours) + 
+    labs(
+        x = "Species",
+        y = "Flipper Length (mm)") + 
+    theme_bw()
+
+flipper_boxplot
+```
+ this code can be turned into a function:
+ 
+ - see the plotting.R script
+ - have produced a function that is flexible for other plotting
+ 
+```{r}
+plot_boxplot(penguins_clean, species, body_mass_g, "Species", "Body Mass (g)", species_colours)
+
+     
+```
+ can now use this function to make 4 subplots
+ 
+```{r}
+# 2 by 2 grid subplots
+# options(repr.plot.width = 8, repr.plot.height = 8, repr.plot.res = 300)
+
+library(patchwork)
+
+# Create individual subplots with different y-axis columns
+plot1 <- plot_boxplot(
+    penguins_clean, species, flipper_length_mm, 
+    "Penguin Species", "Flipper Length (mm)", 
+    species_colours)
+
+plot2 <- plot_boxplot(
+    penguins_clean, species, culmen_length_mm, 
+    "Penguin Species", "Bill Length (mm)", 
+    species_colours)
+
+plot3 <- plot_boxplot(
+    penguins_clean, species, culmen_depth_mm, 
+    "Penguin Species", "Bill Depth (mm)", 
+    species_colours)
+
+plot4 <- plot_boxplot(
+    penguins_clean, species, body_mass_g, 
+    "Penguin Species", "Body Mass (g)", 
+    species_colours)
+
+# Combine plots in a 2x2 grid
+combined_plot <- (plot1 | plot2) / (plot3 | plot4)
+combined_plot
+```
+
+saving plots into the figures file as pdf:
+
+```{r}
+library(ragg)
+library(svglite)
+
+flipper_boxplot <- plot_boxplot(penguins_clean, 
+                                species, flipper_length_mm, 
+                                "Species", "Flipper Length (mm)", 
+                                species_colours)
+
+agg_png("figures/penguin_boxplot_default.png", 
+        width = 20, 
+        height = 20, 
+        units = "cm", 
+        res = 300, 
+        scaling = 2) #changing the scaling or resolution by changing this etc
+print(flipper_boxplot)
+dev.off()
+```
+ this means that our posters and report figures are identical but different sizes if we change these units
+ 
+ to make a powerpoint figure:
+ 
+```{r}
+flipper_boxplot <- plot_boxplot(penguins_clean, 
+                                species, flipper_length_mm, 
+                                "Species", "Flipper Length (mm)", 
+                                species_colours)
+
+agg_png("figures/penguin_boxplot_powerpoint.png", 
+        width = 20, 
+        height = 20, 
+        units = "cm", 
+        res = 300, 
+        scaling = 3)
+print(flipper_boxplot)
+dev.off()
+     
+```
+ 
+ we can also produce vector graphs instead of PNG for higher resolution
+ - always better to use vectors instead of PNG
+ 
+```{r}
+flipper_boxplot <- plot_boxplot(penguins_clean, 
+                                species, flipper_length_mm, 
+                                "Species", "Flipper Length (mm)", 
+                                species_colours)
+inches_conversion = 2.54
+svglite("figures/penguin_boxplot_vector.svg", 
+        width = 20 / inches_conversion, 
+        height = 20 / inches_conversion, 
+        scaling = 2)
+print(flipper_boxplot)
+dev.off()
+```
+ we can also make a function for saving our plots (in the plotting script)
+ 
+```{r}
+save_flipper_plot_png(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_report.png"), 
+                       size = 20, res = 300, scaling = 2)
+
+save_flipper_plot_png(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_poster.png"), 
+                       size = 40, res = 300, scaling = 4)
+
+save_flipper_plot_png(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_powerpoint.png"), 
+                       size = 20, res = 300, scaling = 3)
+
+
+
+```
+```{r}
+save_flipper_plot_svg(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_report.svg"), 
+                       size = 20, scaling = 2)
+
+save_flipper_plot_svg(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_poster.svg"), 
+                       size = 40, scaling = 4)
+
+save_flipper_plot_svg(flipper_boxplot, 
+                       here("figures", "flipper_boxplot_powerpoint.svg"), 
+                       size = 20, scaling = 3)
+
+
+     
+```
+ 
+  
